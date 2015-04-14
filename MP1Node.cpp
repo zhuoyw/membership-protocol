@@ -96,8 +96,8 @@ int MP1Node::initThisNode(Address *joinaddr) {
 	/*
 	 * This function is partially implemented and may require changes
 	 */
-	int id = *(int*)(&memberNode->addr.addr);
-	int port = *(short*)(&memberNode->addr.addr[4]);
+	//int id = *(int*)(&memberNode->addr.addr);
+	//int port = *(short*)(&memberNode->addr.addr[4]);
 
 	memberNode->bFailed = false;
 	memberNode->inited = true;
@@ -131,13 +131,13 @@ int MP1Node::introduceSelfToGroup(Address *joinaddr) {
         memberNode->inGroup = true;
     }
     else {
-        size_t msgsize = sizeof(MessageHdr) + sizeof(joinaddr->addr) + sizeof(long) + 1;
+        size_t msgsize = sizeof(MessageHdr) + sizeof(joinaddr->addr) + sizeof(long);
         msg = (MessageHdr *) malloc(msgsize * sizeof(char));
 
         // create JOINREQ message: format of data is {struct Address myaddr}
         msg->msgType = JOINREQ;
         memcpy((char *)(msg+1), &memberNode->addr.addr, sizeof(memberNode->addr.addr));
-        memcpy((char *)(msg+1) + 1 + sizeof(memberNode->addr.addr), &memberNode->heartbeat, sizeof(long));
+        memcpy((char *)(msg+1) + sizeof(memberNode->addr.addr), &memberNode->heartbeat, sizeof(long));
 
 #ifdef DEBUGLOG
         sprintf(s, "Trying to join...");
@@ -163,6 +163,7 @@ int MP1Node::finishUpThisNode(){
    /*
     * Your code goes here
     */
+    return 0;
 }
 
 /**
@@ -218,6 +219,32 @@ bool MP1Node::recvCallBack(void *env, char *data, int size ) {
 	/*
 	 * Your code goes here
 	 */
+    MessageHdr* msg = (MessageHdr*) malloc(sizeof(char) * size);
+    memcpy(msg, data, sizeof(char) * size);
+    switch (msg->msgType)
+    {
+        case JOINREQ:
+        {
+            //for the introducer
+            Address addr;
+            long heartbeat;
+            memcpy(addr.addr, (char*)(msg+1), sizeof(addr.addr));
+            memcpy(&heartbeat, (char*)(msg+1+sizeof(addr.addr)), sizeof(long));
+            //add to membership list
+            addMemberEntry(&addr, heartbeat, memberNode->timeOutCounter);
+            //send JOINREP
+            sendMemberList(&addr);
+            break;
+        }
+        case JOINREP:
+        {
+            break;
+        }
+        default:
+            return false;
+    }
+    free(msg);
+    return true;
 }
 
 /**
@@ -270,6 +297,48 @@ void MP1Node::initMemberListTable(Member *memberNode) {
 }
 
 /**
+ * FUNCTION NAME: addMemberEntry
+ *
+ * DESCRIPTION: add new entry to the membership list
+ */
+void MP1Node::addMemberEntry(Address* addr, long heartbeat, long timestamp) {
+    int id = addr->getid();
+    short port = addr->getport();
+    if (!findMemberEntry(id))
+    {
+        MemberListEntry entry = MemberListEntry(id, port, heartbeat, timestamp);
+        memberNode->memberList.push_back(entry);
+        log->logNodeAdd(&memberNode->addr, addr);
+    }
+    return;
+}
+
+/**
+ * FUNCTION NAME: findMemberEntry
+ *
+ * DESCRIPTION: add new entry to the membership list
+ */
+bool MP1Node::findMemberEntry(int id) {
+    vector<MemberListEntry>::iterator it;
+    for (it = memberNode->memberList.begin(); it != memberNode->memberList.end(); ++it)
+    {
+        if (id == it->getid())
+            return true;
+    }
+    return false;
+}
+
+void MP1Node::sendMemberList(Address* addr)
+{
+    size_t msgsize = sizeof(MessageHdr) + sizeof(memberNode->addr.addr) + sizeof(long) + sizeof();
+    MessageHdr* msg = (MessageHdr *) malloc(msgsize * sizeof(char));
+    msg->msgType = JOINREP;
+    memcpy((char *)(msg+1), &memberNode->addr.addr, sizeof(memberNode->addr.addr));
+    memcpy((char *)(msg+1) + sizeof(memberNode->addr.addr), &memberNode->heartbeat, sizeof(long));
+    emulNet->ENsend(&memberNode->addr, addr, (char *)msg, msgsize);
+}
+
+/**
  * FUNCTION NAME: printAddress
  *
  * DESCRIPTION: Print the Address
@@ -277,5 +346,5 @@ void MP1Node::initMemberListTable(Member *memberNode) {
 void MP1Node::printAddress(Address *addr)
 {
     printf("%d.%d.%d.%d:%d \n",  addr->addr[0],addr->addr[1],addr->addr[2],
-                                                       addr->addr[3], *(short*)&addr->addr[4]) ;    
+                                                       addr->addr[3], *(short*)&addr->addr[4]) ;
 }
