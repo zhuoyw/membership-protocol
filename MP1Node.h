@@ -31,7 +31,7 @@
 enum MsgTypes{
     JOINREQ,
     JOINREP,
-    DUMMYLASTMSGTYPE
+    GOSSIP
 };
 
 /**
@@ -64,7 +64,7 @@ public:
 	int recvLoop();
 	static int enqueueWrapper(void *env, char *buff, int size);
 	void nodeStart(char *servaddrstr, short serverport);
-	int initThisNode(Address *joinaddr);
+	int initThisNode();
 	int introduceSelfToGroup(Address *joinAddress);
 	int finishUpThisNode();
 	void nodeLoop();
@@ -74,9 +74,10 @@ public:
 	int isNullAddress(Address *addr);
 	Address getJoinAddress();
 	void initMemberListTable(Member *memberNode);
-	void addMemberEntry(Address* addr, long heartbeat, long timestamp);
-	bool findMemberEntry(int id);
-	void sendMemberList(Address* addr);
+	void addMemberEntry(int id, short port, long heartbeat);
+	bool findMemberEntry(int id, short port);
+	void updateMemberEntry(int id, short port, long heartbeat);
+	void sendMemberList(Address* addr, MsgTypes msgtype);
 	void printAddress(Address *addr);
 	virtual ~MP1Node();
 };

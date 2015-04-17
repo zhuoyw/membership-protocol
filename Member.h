@@ -42,6 +42,10 @@ public:
 		memcpy(&addr[0], &id, sizeof(int));
 		memcpy(&addr[4], &port, sizeof(short));
 	}
+	Address(int id, short port) {
+		*(int *)(&addr[0]) = id;
+    	*(short *)(&addr[4]) = port;
+	}
 	string getAddress() {
 		int id = 0;
 		short port;
