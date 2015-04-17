@@ -79,6 +79,9 @@ public:
 	void updateMemberEntry(int id, short port, long heartbeat);
 	void sendMemberList(Address* addr, MsgTypes msgtype);
 	void printAddress(Address *addr);
+	int getid(Address* addr);
+	short getport(Address* addr);
+	void makeAddress(Address* addr, int id, short port);
 	virtual ~MP1Node();
 };
 

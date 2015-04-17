@@ -235,7 +235,7 @@ bool MP1Node::recvCallBack(void *env, char *data, int size ) {
             memcpy(addr.addr, (char*)(msg)+offset, sizeof(addr.addr));
             memcpy(&heartbeat, (char*)(msg)+sizeof(MessageHdr)+sizeof(addr.addr), sizeof(long));
             //add to membership list
-            addMemberEntry(addr.getid(), addr.getport(), heartbeat);
+            addMemberEntry(getid(&addr), getport(&addr), heartbeat);
             //send JOINREP
             //printAddress(&addr);
             sendMemberList(&addr, JOINREP);
@@ -325,7 +325,8 @@ void MP1Node::nodeLoopOps() {
         for (it = memberNode->memberList.begin(); it != memberNode->memberList.end(); ++it) {
             if (memberNode->timeOutCounter != it->timestamp)
             {
-                Address addr = Address(it->id, it->port);
+                Address addr;
+                makeAddress(&addr, it->id, it->port);
                 sendMemberList(&addr, GOSSIP);
             }
         }
@@ -336,7 +337,8 @@ void MP1Node::nodeLoopOps() {
     memberNode->timeOutCounter += 1;
     for (it = memberNode->memberList.begin(); it != memberNode->memberList.end(); ) {
         if (memberNode->timeOutCounter - TREMOVE > it->timestamp) {
-            Address addr = Address(it->id, it->port);
+            Address addr;
+            makeAddress(&addr, it->id, it->port);
             #ifdef DEBUGLOG
             log->logNodeRemove(&memberNode->addr, &addr);
             #endif
@@ -388,7 +390,8 @@ void MP1Node::initMemberListTable(Member *memberNode) {
  * DESCRIPTION: add new entry to the membership list
  */
 void MP1Node::addMemberEntry(int id, short port, long heartbeat) {
-    Address addr = Address(id, port);
+    Address addr;
+    makeAddress(&addr, id, port);
     if (!findMemberEntry(id, port))
     {
         #ifdef DEBUGLOG
@@ -450,11 +453,11 @@ void MP1Node::sendMemberList(Address* addr, MsgTypes msgtype)
     //memcpy((char*)(msg)+sizeof(MessageHdr), &count, sizeof(int));
     offset += sizeof(int);
 
-    int id = memberNode->addr.getid();
+    int id = getid(&memberNode->addr);
     memcpy((char*)(msg)+offset, &id, sizeof(int));
     offset += sizeof(int);
 
-    short port = memberNode->addr.getport();
+    short port = getport(&memberNode->addr);
     memcpy((char*)(msg)+offset, &port, sizeof(short));
     offset += sizeof(short);
 
@@ -496,4 +499,18 @@ void MP1Node::printAddress(Address *addr)
 {
     printf("%d.%d.%d.%d:%d \n",  addr->addr[0],addr->addr[1],addr->addr[2],
                                                        addr->addr[3], *(short*)&addr->addr[4]) ;
+}
+
+int MP1Node::getid(Address* addr) {
+    return *(int*)(&addr->addr[0]);
+}
+
+short MP1Node::getport(Address* addr) {
+    return *(short*)(&addr->addr[4]);
+}
+
+void MP1Node::makeAddress(Address* addr, int id, short port) {
+    *(int *)(&addr->addr[0]) = id;
+    *(short *)(&addr->addr[4]) = port;
+    return;
 }
